@@ -27,20 +27,22 @@ def detect_faces(filename, required_size=(160, 160)):
     for result in results:
         print(result)
         # exit()
-        x1, y1, width, height = result['box']
-        # use absolute pixels
-        x1, y1 = abs(x1), abs(y1)
-        x2, y2 = x1 + width, y1 + height
-        face = pixels[y1:y2, x1:x2]
-        # resize image
-        image = Image.fromarray(face)
-        image = image.resize(required_size)
-        face_image_array = asarray(image)
-        detected_face = {
-            "image_array": face_image_array,
-            "image_metadata": result
-        }
-        detected_faces.append(detected_face)
+        if result['confidence'] > 0.97:
+
+            x1, y1, width, height = result['box']
+            # use absolute pixels
+            x1, y1 = abs(x1), abs(y1)
+            x2, y2 = x1 + width, y1 + height
+            face = pixels[y1:y2, x1:x2]
+            # resize image
+            image = Image.fromarray(face)
+            image = image.resize(required_size)
+            face_image_array = asarray(image)
+            detected_face = {
+                "image_array": face_image_array,
+                "image_metadata": result
+            }
+            detected_faces.append(detected_face)
     return detected_faces
 
 
@@ -235,96 +237,36 @@ def _chinese_whispers(encoding_list, threshold=0.78, iterations=20):
 
 
 
-def compute_facial_encodings(sess,images_placeholder,embeddings,phase_train_placeholder,image_size,
-                    embedding_size,nrof_images,nrof_batches,emb_array,batch_size,paths):
-    """ Compute Facial Encodings
-
-        Given a set of images, compute the facial encodings of each face detected in the images and
-        return them. If no faces, or more than one face found, return nothing for that image.
-
-        Inputs:
-            image_paths: a list of image paths
-
-        Outputs:
-            facial_encodings: (image_path, facial_encoding) dictionary of facial encodings
-
-    """
-
-    for i in range(nrof_batches):
-        start_index = i*batch_size
-        end_index = min((i+1)*batch_size, nrof_images)
-        paths_batch = paths[start_index:end_index]
-        images = paths
-        feed_dict = { images_placeholder:images, phase_train_placeholder:False }
-        emb_array[start_index:end_index,:] = sess.run(embeddings, feed_dict=feed_dict)
-
-    facial_encodings = {}
-    for x in range(nrof_images):
-        facial_encodings[paths[x]] = emb_array[x,:]
-
-
-    return facial_encodings
-
-
-def main(face_embeddings, batch_size=20, args=None):
-    """ Main
-
-    Given a list of images, save out facial encoding data files and copy
-    images into folders of face clusters.
-
-    """
-    from os.path import join, basename, exists
-    from os import makedirs
-    import numpy as np
-    import shutil
-    import sys
-
-    # if not exists(args.output):
-    #     makedirs(args.output)
-
-    with tf.Graph().as_default():
-        with tf.Session() as sess:
-            # image_paths = get_onedir(args.input)
-            # image_list, label_list = facenet.get_image_paths_and_labels(train_set)
-
-            # meta_file, ckpt_file = facenet.get_model_filenames(os.path.expanduser(args.model_dir))
-            #
-            # print('Metagraph file: %s' % meta_file)
-            # print('Checkpoint file: %s' % ckpt_file)
-            # load_model(args.model_dir, meta_file, ckpt_file)
-            load_model('/Users/bildad.namawa/sandbox/jupyter-notebooks/face_recognition/facenet_keras.h5')
-            # Get input and output tensors
-            embeddings = tf.get_default_graph().get_tensor_by_name("embeddings:0")
-            phase_train_placeholder = tf.get_default_graph().get_tensor_by_name("phase_train:0")
-            images_placeholder = tf.get_default_graph().get_tensor_by_name("batch_join:0")
-
-            image_size = images_placeholder.get_shape()[1]
-            print("image_size:", image_size)
-            embedding_size = embeddings.get_shape()[1]
-
-            # Run forward pass to calculate embeddings
-            print('Runnning forward pass on images')
-
-            nrof_images = len(face_embeddings)
-            nrof_batches = int(math.ceil(1.0 * face_embeddings / batch_size))
-            emb_array = np.zeros((nrof_images, embedding_size))
-            facial_encodings = compute_facial_encodings(sess, images_placeholder, embeddings, phase_train_placeholder,
-                                                        image_size,
-                                                        embedding_size, nrof_images, nrof_batches, emb_array,
-                                                        batch_size, face_embeddings)
-            print(face_embeddings)
-            exit("kufaaaaaaaa")
-            sorted_clusters = cluster_facial_encodings(facial_encodings)
-            num_cluster = len(sorted_clusters)
-
-            # Copy image files to cluster folders
-            for idx, cluster in enumerate(sorted_clusters):
-                # save all the cluster
-                cluster_dir = join(args.output, str(idx))
-                if not exists(cluster_dir):
-                    makedirs(cluster_dir)
-                for path in cluster:
-                    shutil.copy(path, join(cluster_dir, basename(path)))
+# def compute_facial_encodings(sess,images_placeholder,embeddings,phase_train_placeholder,image_size,
+#                     embedding_size,nrof_images,nrof_batches,emb_array,batch_size,paths):
+#     """ Compute Facial Encodings
+#
+#         Given a set of images, compute the facial encodings of each face detected in the images and
+#         return them. If no faces, or more than one face found, return nothing for that image.
+#
+#         Inputs:
+#             image_paths: a list of image paths
+#
+#         Outputs:
+#             facial_encodings: (image_path, facial_encoding) dictionary of facial encodings
+#
+#     """
+#
+#     for i in range(nrof_batches):
+#         start_index = i*batch_size
+#         end_index = min((i+1)*batch_size, nrof_images)
+#         paths_batch = paths[start_index:end_index]
+#         images = paths
+#         feed_dict = { images_placeholder:images, phase_train_placeholder:False }
+#         emb_array[start_index:end_index,:] = sess.run(embeddings, feed_dict=feed_dict)
+#
+#     facial_encodings = {}
+#     for x in range(nrof_images):
+#         facial_encodings[paths[x]] = emb_array[x,:]
+#
+#
+#     return facial_encodings
+#
 
 
 def cluster_facial_encodings(facial_encodings):
@@ -369,19 +311,23 @@ pixels = get_faces_from_directory('/Users/bildad.namawa/sandbox/jupyter-notebook
 
 # exit()
 x = create_face_embeddings(pixels)
-embeddings = [d.get('image_embedding', None) for d in x]
+# embeddings = [d.get('image_embedding', None) for d in x]
 # save_detected_faces(x)
 # encodings = main(embeddings)
 sorted_clusters = cluster_facial_encodings(x)
 num_cluster = len(sorted_clusters)
 
-for num, cluster in enumerate(sorted_clusters):
-    num+=1
-    for face in cluster:
-        face_array = next((item.get('image_array') for item in x if item["face_id"] == face), False)
-        # if face_array. != False:
-        cv2.imwrite('./output_images/cluster_'+str(num)+'_'+str(face) + '.jpg', cv2.cvtColor(face_array, cv2.COLOR_RGB2BGR))
+def save_cluster_images_to_disk(face_embeddings, face_clusters):
+
+    for num, cluster in enumerate(face_clusters):
+        num+=1
+        for face in cluster:
+            face_array = next((item.get('image_array') for item in face_embeddings if item["face_id"] == face), False)
+            # if face_array. != False:
+            cv2.imwrite('./output_images/cluster_'+str(num)+'_'+str(face) + '.jpg', cv2.cvtColor(face_array, cv2.COLOR_RGB2BGR))
 # print(sorted_clusters)
+
+save_cluster_images_to_disk(x,sorted_clusters)
 print(num_cluster)
 
 
